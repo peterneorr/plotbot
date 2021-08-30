@@ -1,10 +1,15 @@
 #!/usr/bin/python3
 
-import RPi.GPIO as GPIO
-import sys, time
+import sys
+import time
 
-#microsecond sleep
-usleep = lambda x: time.sleep(x/1000000.0)
+import RPi.GPIO as GPIO
+
+from pb.home_sensor import HomeSensor
+from pb.stepper import Stepper
+
+# microsecond sleep
+usleep = lambda x: time.sleep(x / 1000000.0)
 
 GPIO.setmode(GPIO.BCM)
 # pins for x,y,z steppers
@@ -13,97 +18,75 @@ X_DIR = 3
 X_MS1 = 4
 X_MS2 = 5
 X_MS3 = 6
+x_stepper = Stepper(dir_pin=X_DIR, step_pin=X_STEP, ms1_pin=X_MS1, ms2_pin=X_MS2, ms3_pin=X_MS3)
+
 Y_STEP = 7
 Y_DIR = 8
 Y_MS1 = 9
 Y_MS2 = 10
 Y_MS3 = 11
+y_stepper = Stepper(dir_pin=Y_DIR, step_pin=Y_STEP, ms1_pin=Y_MS1, ms2_pin=Y_MS2, ms3_pin=Y_MS3)
+
 Z_STEP = 12
 Z_DIR = 13
 Z_MS1 = 14
 Z_MS2 = 15
 Z_MS3 = 16
-for pin in [X_STEP, X_DIR, X_MS1, X_MS2, X_MS3,
-         Y_STEP, Y_DIR, Y_MS1, Y_MS2, Y_MS3,
-        Z_STEP, Z_DIR, Z_MS1, Z_MS2, Z_MS3]:
-    GPIO.setup(pin,  GPIO.OUT)
+z_stepper = Stepper(dir_pin=Z_DIR, step_pin=Z_STEP, ms1_pin=Z_MS1, ms2_pin=Z_MS2, ms3_pin=Z_MS3)
 
-X_Home = 17
-Y_Home = 18
-Z_Home = 19
-
-for pin in [X_Home,Y_Home,Z_Home]:
-    GPIO.setup(pin,  GPIO.IN)
-
-
-def setStepSize(ms1,ms2,ms3, speed):
-    if (16 == speed):
-        GPIO.output(ms1, 1)
-        GPIO.output(ms2, 1)
-        GPIO.output(ms3, 1)
-    elif (8 == speed):
-        GPIO.output(ms1, 1)
-        GPIO.output(ms2, 1)
-        GPIO.output(ms3, 0)
-    elif (4 == speed):
-        GPIO.output(ms1, 0)
-        GPIO.output(ms2, 1)
-        GPIO.output(ms3, 0)
-    elif (2 == speed):
-        GPIO.output(ms1, 1)
-        GPIO.output(ms2, 0)
-        GPIO.output(ms3, 0)
-    elif (1 == speed) :
-        GPIO.output(ms1, 0)
-        GPIO.output(ms2, 0)
-        GPIO.output(ms3, 0)
-    else:
-        raise Exception('Stepper speed {} invalid.  Must be 1, 2, 4, 8, or 16'.format(speed))
-
-def pulse(pin):
-    GPIO.output(pin,1)
-    usleep(pulse_length_us)
-    GPIO.output(pin,0)            
-
-setStepSize(X_MS1,X_MS2,X_MS3,1)
+x_home = HomeSensor(17)
+y_home = HomeSensor(18)
+z_home = HomeSensor(19)
 
 EAST = True
 NORTH = False
 WEST = not EAST
 SOUTH = not NORTH
-
-def x_is_home():
- return GPIO.input(X_Home)
+UP = True
+DOWN = not UP
 
 try:
 
-    pulse_length_us=500
-    num_steps=200
-    step_wait=.01
+    pulse_length_us = 500
 
+    step_wait = .001
+    x_stepper.set_step_size(4)
+    y_stepper.set_step_size(4)
+    while True:
+        print('x home sensor {}'.format(x_home.is_home()))
+        print('y home sensor {}'.format(y_home.is_home()))
+        print('z home sensor {}'.format(z_home.is_home()))
+        print()
 
-    while True:  		
-        print ('x home sensor {}'.format(  x_is_home()))
-        print ('y home sensor {}'.format(  GPIO.input(Y_Home)))
-        print ('z home sensor {}'.format(  GPIO.input(Z_Home)))
-        print ()
-
-        time.sleep(1)  
-        if (not x_is_home()):
-            GPIO.output(X_DIR,WEST)
-        GPIO.output(Z_DIR,NORTH)
-        
-        for x in range(num_steps):
-            if (not x_is_home()):
-                pulse(X_STEP)              
-            #pulse(Y_STEP)
+        x_stepper.set_direction(WEST)
+        for x in range(100):
+            x_stepper.pulse()
             time.sleep(step_wait)
-    
-    
+        x_stepper.set_direction(EAST)
+        for x in range(100):
+            x_stepper.pulse()
+            time.sleep(step_wait)
+
+        y_stepper.set_direction(NORTH)
+        for x in range(100):
+            y_stepper.pulse()
+            time.sleep(step_wait)
+        y_stepper.set_direction(SOUTH)
+        for x in range(100):
+            y_stepper.pulse()
+            time.sleep(step_wait)
+
+        z_stepper.set_direction(UP)
+        for x in range(200):
+            z_stepper.pulse()
+            time.sleep(step_wait/2)
+        z_stepper.set_direction(DOWN)
+        for x in range(200):
+            z_stepper.pulse()
+            time.sleep(step_wait/2)
+
 except KeyboardInterrupt:
-    #print('interrupted!')
+    # print('interrupted!')
     GPIO.cleanup()
-   
-sys.exit()    
-  
-    
+
+sys.exit()
