@@ -5,7 +5,7 @@ import RPi.GPIO as GPIO
 
 # microsecond sleep
 usleep = lambda x: time.sleep(x / 1000000.0)
-pulse_length_us = 500
+pulse_length_us = 200
 
 
 class Stepper:
@@ -16,6 +16,7 @@ class Stepper:
         self.__ms2_pin = ms2_pin
         self.__ms3_pin = ms3_pin
         self.__direction = 1
+        self.step_size = 1
         for pin in [self.__dir_pin, self.__step_pin, self.__ms1_pin, self.__ms2_pin, self.__ms3_pin]:
             GPIO.setup(pin, GPIO.OUT)
 
@@ -35,25 +36,34 @@ class Stepper:
         GPIO.output(self.__step_pin, 1)
         usleep(pulse_length_us)
         GPIO.output(self.__step_pin, 0)
+        usleep(pulse_length_us)
 
-    def set_step_size(self, step_size):
+    def get_step_size(self) -> int:
+        return self.step_size
+
+    def set_step_size(self, step_size: int):
         if 16 == step_size:
+            self.step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 1)
         elif 8 == step_size:
+            self.step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 0)
         elif 4 == step_size:
+            self.step_size = step_size
             GPIO.output(self.__ms1_pin, 0)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 0)
         elif 2 == step_size:
+            self.step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 0)
             GPIO.output(self.__ms3_pin, 0)
         elif 1 == step_size:
+            self.step_size = step_size
             GPIO.output(self.__ms1_pin, 0)
             GPIO.output(self.__ms2_pin, 0)
             GPIO.output(self.__ms3_pin, 0)
@@ -70,7 +80,7 @@ if __name__ == '__main__':
         X_MS2 = 5
         X_MS3 = 6
         tick = .1
-        steps = 15
+        steps = 100
         s = Stepper(dir_pin=X_DIR, step_pin=X_STEP, ms1_pin=X_MS1, ms2_pin=X_MS2, ms3_pin=X_MS3)
         while True:
             for speed in (1, 2, 4, 8, 16):
@@ -79,11 +89,9 @@ if __name__ == '__main__':
                 s.set_direction(0)
                 for x in range(steps):
                     s.pulse()
-                    time.sleep(tick)
                 s.set_direction(1)
                 for x in range(steps):
                     s.pulse()
-                    time.sleep(tick)
 
     except KeyboardInterrupt:
         GPIO.cleanup()
