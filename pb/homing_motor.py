@@ -3,8 +3,8 @@ import sys
 import time
 
 import RPi.GPIO as GPIO
-from home_sensor import HomeSensor
-from stepper import Stepper
+from .home_sensor import HomeSensor
+from .stepper import Stepper
 
 
 class HomingMotor:
@@ -16,7 +16,7 @@ class HomingMotor:
         self.__max_steps = max_steps
         self.__position = 0
         count = self.go_home()
-        print('{} init - moved {} steps back to find home'.format(name, count))
+        print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
 
     def get_name(self):
         return self.__name
@@ -91,6 +91,13 @@ class HomingMotor:
             self.backward()
             step_count += 1
         return step_count
+
+    def set_step_size(self, step_size: int):
+        self.__stepper.set_step_size(step_size)
+
+    def get_step_size(self) -> int:
+        return self.__stepper.get_step_size()
+
 
 if __name__ == '__main__':
     try:

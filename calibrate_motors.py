@@ -16,6 +16,7 @@ if __name__ == '__main__':
         X_MS2 = 5
         X_MS3 = 6
         x_stepper = Stepper(dir_pin=X_DIR, step_pin=X_STEP, ms1_pin=X_MS1, ms2_pin=X_MS2, ms3_pin=X_MS3)
+        x_home = HomeSensor(17)
 
         Y_STEP = 7
         Y_DIR = 8
@@ -23,6 +24,7 @@ if __name__ == '__main__':
         Y_MS2 = 10
         Y_MS3 = 11
         y_stepper = Stepper(dir_pin=Y_DIR, step_pin=Y_STEP, ms1_pin=Y_MS1, ms2_pin=Y_MS2, ms3_pin=Y_MS3)
+        y_home = HomeSensor(18)
 
         Z_STEP = 12
         Z_DIR = 13
@@ -30,9 +32,6 @@ if __name__ == '__main__':
         Z_MS2 = 15
         Z_MS3 = 16
         z_stepper = Stepper(dir_pin=Z_DIR, step_pin=Z_STEP, ms1_pin=Z_MS1, ms2_pin=Z_MS2, ms3_pin=Z_MS3)
-
-        x_home = HomeSensor(17)
-        y_home = HomeSensor(18)
         z_home = HomeSensor(19)
 
         y_stepper.set_direction(0)
