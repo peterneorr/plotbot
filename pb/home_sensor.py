@@ -16,9 +16,15 @@ class HomeSensor:
 if __name__ == '__main__':
     try:
         GPIO.setmode(GPIO.BCM)
-        x_home = HomeSensor(17)
+        x_home = HomeSensor(24)
+        y_home = HomeSensor(23)
+        z_home = HomeSensor(25)
+
         while True:
-            print('home sensor value is : {}'.format(x_home.is_home()))
+            print('X home sensor value is : {}'.format(x_home.is_home()))
+            print('Y home sensor value is : {}'.format(y_home.is_home()))
+            print('Z home sensor value is : {}'.format(z_home.is_home()))
+            print()
             time.sleep(1)
     except KeyboardInterrupt:
         GPIO.cleanup()

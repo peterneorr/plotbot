@@ -8,15 +8,25 @@ from .stepper import Stepper
 
 
 class HomingMotor:
-    def __init__(self, name, stepper, home_sensor, max_steps=50, inverted=False):
+    def __init__(self, name, stepper, home_sensor, max_steps=50, inverted=False, pulse_delay=.001, step_size=1):
         self.__name = name
         self.__stepper = stepper
         self.__home = home_sensor
         self.__inverted = inverted
         self.__max_steps = max_steps
         self.__position = 0
+        self.__pulse_delay = pulse_delay
+        self.__stepper.set_step_size(step_size)
         count = self.go_home()
         print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
+
+    def get_pulse_delay(self):
+        """Returns the current delay in seconds between stepper motor pulses. Default is .001s  """
+        return self.__pulse_delay
+
+    def set_pulse_delay(self, t):
+        """Sets the delay in seconds between stepper motor pulses. Default is .001s  """
+        self.__pulse_delay = t
 
     def get_name(self):
         return self.__name
@@ -67,7 +77,7 @@ class HomingMotor:
             self.__position += (1 / self.__stepper.get_step_size())
         else:
             self.__position -= (1 / self.__stepper.get_step_size())
-        time.sleep(.001)
+        time.sleep(self.__pulse_delay)
 
     def is_home(self):
         if self.__home.is_home():

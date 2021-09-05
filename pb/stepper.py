@@ -69,19 +69,42 @@ class Stepper:
             GPIO.output(self.__ms3_pin, 0)
         else:
             raise Exception('Stepper step_size {} invalid.  Must be 1, 2, 4, 8, or 16'.format(step_size))
-
+        time.sleep(.02)
 
 if __name__ == '__main__':
     try:
         GPIO.setmode(GPIO.BCM)
-        X_STEP = 2
-        X_DIR = 3
-        X_MS1 = 4
-        X_MS2 = 5
-        X_MS3 = 6
+        #X PINS
+        DIR = 5
+        STEP = 6
+        MS1 = 26
+        MS2 = 19
+        MS3 = 13
+
+        #Z PINS
+        DIR = 1
+        STEP = 12
+        MS1 = 21
+        MS2 = 20
+        MS3 = 16
+
+        #Y PINS
+        DIR = 27
+        STEP = 22
+        MS1 = 9
+        MS2 = 10
+        MS3 = 11
+
+        # X PINS
+        DIR = 5
+        STEP = 6
+        MS1 = 26
+        MS2 = 19
+        MS3 = 13
+
         tick = .1
-        steps = 100
-        s = Stepper(dir_pin=X_DIR, step_pin=X_STEP, ms1_pin=X_MS1, ms2_pin=X_MS2, ms3_pin=X_MS3)
+        steps = 300
+        s = Stepper(dir_pin=DIR, step_pin=STEP, ms1_pin=MS1, ms2_pin=MS2, ms3_pin=MS3)
         while True:
             for speed in (1, 2, 4, 8, 16):
                 s.set_step_size(speed)
@@ -89,9 +112,11 @@ if __name__ == '__main__':
                 s.set_direction(0)
                 for x in range(steps):
                     s.pulse()
+                    #time.sleep(tick)
                 s.set_direction(1)
                 for x in range(steps):
                     s.pulse()
+                    #time.sleep(tick)
 
     except KeyboardInterrupt:
         GPIO.cleanup()
