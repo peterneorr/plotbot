@@ -64,32 +64,51 @@ def wave(m: HomingMotor, percent: float, signal):
         m.goto_pos(min)
 
 
+def dash(m: HomingMotor, len: float, signal):
+    while signal():
+        pen_down(m)
+        time.sleep(len)
+        pen_up(m)
+
+
+def pen_up(z: HomingMotor):
+    z.goto_pos(2100)
+
+
+def pen_down(z: HomingMotor):
+    z.goto_pos(2100 - 350)
+
+
 def main():
     GPIO.setmode(GPIO.BCM)
     x, y, z = init_x(), init_y(), init_z()
+    time.sleep(5)
     x.set_step_size(4)
     try:
         go = True
-        x_thread = threading.Thread(target=wave, args=(x, 1, lambda: go))
+        x_thread = threading.Thread(target=wave, args=(x, .8, lambda: go))
         x_thread.start()
-        y_thread = threading.Thread(target=wave, args=(y, 1, lambda: go))
+        y_thread = threading.Thread(target=wave, args=(y, .8, lambda: go))
         y_thread.start()
+
+
         time.sleep(2)
-        z.goto_pos(2000)
-        time.sleep(15)
+        z.goto_pos(2100)
+        time.sleep(3600)
         print('time to stop!')
         go = False
-        z.go_home()
         x_thread.join()
         y_thread.join()
+        z_thread.join()
 
         GPIO.cleanup()
 
     except KeyboardInterrupt:
         go = False
-        z.go_home()
         x_thread.join()
         y_thread.join()
+        z_thread.join()
+        z.go_home()
         GPIO.cleanup()
 
 
