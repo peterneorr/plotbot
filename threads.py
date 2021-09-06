@@ -118,4 +118,5 @@ except KeyboardInterrupt:
     # print('interrupted!')
     GPIO.cleanup()
 
+GPIO.cleanup()
 sys.exit()

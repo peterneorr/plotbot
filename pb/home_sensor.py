@@ -2,10 +2,12 @@
 import sys
 import time
 import RPi.GPIO as GPIO
+from dataclasses import dataclass
 
 
+@dataclass
 class HomeSensor:
-    def __init__(self, input_pin):
+    def __init__(self, input_pin: int):
         self.pin = input_pin
         GPIO.setup(self.pin, GPIO.IN)
 
@@ -26,6 +28,7 @@ if __name__ == '__main__':
             print('Z home sensor value is : {}'.format(z_home.is_home()))
             print()
             time.sleep(1)
+
     except KeyboardInterrupt:
         GPIO.cleanup()
 

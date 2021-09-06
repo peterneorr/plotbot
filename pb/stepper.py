@@ -2,21 +2,22 @@
 import sys
 import time
 import RPi.GPIO as GPIO
+from dataclasses import dataclass
 
 # microsecond sleep
 usleep = lambda x: time.sleep(x / 1000000.0)
 pulse_length_us = 200
 
-
+@dataclass
 class Stepper:
-    def __init__(self, dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin):
+    def __init__(self, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int):
         self.__dir_pin = dir_pin
         self.__step_pin = step_pin
         self.__ms1_pin = ms1_pin
         self.__ms2_pin = ms2_pin
         self.__ms3_pin = ms3_pin
         self.__direction = 1
-        self.step_size = 1
+        self.__step_size = 1
         for pin in [self.__dir_pin, self.__step_pin, self.__ms1_pin, self.__ms2_pin, self.__ms3_pin]:
             GPIO.setup(pin, GPIO.OUT)
 
@@ -39,31 +40,31 @@ class Stepper:
         usleep(pulse_length_us)
 
     def get_step_size(self) -> int:
-        return self.step_size
+        return self.__step_size
 
     def set_step_size(self, step_size: int):
         if 16 == step_size:
-            self.step_size = step_size
+            self.__step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 1)
         elif 8 == step_size:
-            self.step_size = step_size
+            self.__step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 0)
         elif 4 == step_size:
-            self.step_size = step_size
+            self.__step_size = step_size
             GPIO.output(self.__ms1_pin, 0)
             GPIO.output(self.__ms2_pin, 1)
             GPIO.output(self.__ms3_pin, 0)
         elif 2 == step_size:
-            self.step_size = step_size
+            self.__step_size = step_size
             GPIO.output(self.__ms1_pin, 1)
             GPIO.output(self.__ms2_pin, 0)
             GPIO.output(self.__ms3_pin, 0)
         elif 1 == step_size:
-            self.step_size = step_size
+            self.__step_size = step_size
             GPIO.output(self.__ms1_pin, 0)
             GPIO.output(self.__ms2_pin, 0)
             GPIO.output(self.__ms3_pin, 0)
@@ -71,24 +72,25 @@ class Stepper:
             raise Exception('Stepper step_size {} invalid.  Must be 1, 2, 4, 8, or 16'.format(step_size))
         time.sleep(.02)
 
+
 if __name__ == '__main__':
     try:
         GPIO.setmode(GPIO.BCM)
-        #X PINS
+        # X PINS
         DIR = 5
         STEP = 6
         MS1 = 26
         MS2 = 19
         MS3 = 13
 
-        #Z PINS
+        # Z PINS
         DIR = 1
         STEP = 12
         MS1 = 21
         MS2 = 20
         MS3 = 16
 
-        #Y PINS
+        # Y PINS
         DIR = 27
         STEP = 22
         MS1 = 9
@@ -112,11 +114,11 @@ if __name__ == '__main__':
                 s.set_direction(0)
                 for x in range(steps):
                     s.pulse()
-                    #time.sleep(tick)
+                    # time.sleep(tick)
                 s.set_direction(1)
                 for x in range(steps):
                     s.pulse()
-                    #time.sleep(tick)
+                    # time.sleep(tick)
 
     except KeyboardInterrupt:
         GPIO.cleanup()

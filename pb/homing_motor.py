@@ -1,17 +1,20 @@
 #!/usr/bin/env python3
 import sys
 import time
+from dataclasses import dataclass
 
 import RPi.GPIO as GPIO
 from .home_sensor import HomeSensor
 from .stepper import Stepper
 
 
+@dataclass
 class HomingMotor:
-    def __init__(self, name, stepper, home_sensor, max_steps=50, inverted=False, pulse_delay=.001, step_size=1):
+    def __init__(self, name: str, stepper: Stepper, home_sensor: HomeSensor, max_steps=50, inverted=False,
+                 pulse_delay=.001, step_size=1):
         self.__name = name
         self.__stepper = stepper
-        self.__home = home_sensor
+        self.__sensor = home_sensor
         self.__inverted = inverted
         self.__max_steps = max_steps
         self.__position = 0
@@ -20,18 +23,18 @@ class HomingMotor:
         count = self.go_home()
         print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
 
-    def get_pulse_delay(self):
+    def get_pulse_delay(self) -> float:
         """Returns the current delay in seconds between stepper motor pulses. Default is .001s  """
         return self.__pulse_delay
 
-    def set_pulse_delay(self, t):
+    def set_pulse_delay(self, t: float):
         """Sets the delay in seconds between stepper motor pulses. Default is .001s  """
         self.__pulse_delay = t
 
-    def get_name(self):
+    def get_name(self) -> str:
         return self.__name
 
-    def set_name(self, name):
+    def set_name(self, name: str):
         self.__name = name
 
     def set_max_steps(self, steps: int):
@@ -40,7 +43,7 @@ class HomingMotor:
     def get_max_steps(self) -> int:
         return self.__max_steps
 
-    def is_inverted(self):
+    def is_inverted(self) -> bool:
         return self.__inverted
 
     def go_home(self) -> int:
@@ -79,18 +82,19 @@ class HomingMotor:
             self.__position -= (1 / self.__stepper.get_step_size())
         time.sleep(self.__pulse_delay)
 
-    def is_home(self):
-        if self.__home.is_home():
+    def is_home(self) -> bool:
+        if self.__sensor.is_home():
             self.__position = 0
             return True
         return False
 
-    def get_pos(self):
+    def get_pos(self) -> float:
         return self.__position
 
     def goto_pos(self, n: int) -> int:
         if n > self.__max_steps:
-            raise Exception('Cannot move motor {} to {}. (beyond max steps of {})'.format(self.__name, n, self.__max_steps))
+            raise Exception(
+                'Cannot move motor {} to {}. (beyond max steps of {})'.format(self.__name, n, self.__max_steps))
         elif n < 0:
             raise Exception('Cannot move motor {} to position less than 0'.format(self.__name, n, self.__max_steps))
         step_count = 0
@@ -103,6 +107,8 @@ class HomingMotor:
         return step_count
 
     def set_step_size(self, step_size: int):
+        if self.__stepper is None:
+            return
         self.__stepper.set_step_size(step_size)
 
     def get_step_size(self) -> int:
@@ -123,7 +129,7 @@ if __name__ == '__main__':
 
         m = HomingMotor("XMotor", stepper, sensor, 460)
         for x in range(3):
-            count = m.goto_pos(m.get_max_steps()/4)
+            count = m.goto_pos(m.get_max_steps() / 4)
             print('{} moved {} steps to get to position {}'.format(m.get_name(), count, m.get_pos()))
             x = m.go_home()
             print('{} moved {} steps back to find home'.format(m.get_name(), x))
