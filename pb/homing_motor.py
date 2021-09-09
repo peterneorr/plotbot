@@ -56,22 +56,26 @@ class HomingMotor:
         return step_count
 
     def step_backward(self):
+        """Returns 1 if moved or 0 if not moved because motor is already at min or max"""
         if self.is_home():
-            return
+            return 0
         if self.__inverted:
             self.__stepper.set_direction(1)
         else:
             self.__stepper.set_direction(0)
         self.__pulse()
+        return 1
 
-    def step_forward(self):
+    def step_forward(self) -> int:
+        """Returns 1 if moved or 0 if not moved because motor is already at min or max"""
         if self.get_pos() >= self.__max_steps:
-            return
+            return 0
         if self.__inverted:
             self.__stepper.set_direction(0)
         else:
             self.__stepper.set_direction(1)
         self.__pulse()
+        return 1
 
     def __pulse(self):
         self.__stepper.pulse()

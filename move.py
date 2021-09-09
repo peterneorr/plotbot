@@ -39,27 +39,23 @@ def move_distance(motor: HomingMotor, dist_arg: int, go_forward: bool, unit_arg:
     if unit_arg == "steps":
         try:
             steps = int(dist_arg)
-            for x in range(steps):
-                if go_forward:
-                    motor.step_forward()
-                else:
-                    motor.step_forward()
         except ValueError as verr:
             print('Distance must be an integer value or \'home\' or \'max\'')
     elif unit_arg == "mm":
         try:
             steps = int(dist_arg) * steps_per_mm[motor]
-            print(steps)
-            for x in range(int(steps)):
-                if go_forward:
-                    motor.step_forward()
-                else:
-                    motor.step_forward()
         except ValueError as verr:
             print('Distance must be an integer value or \'home\' or \'max\'')
     else:
-        print("Units must be 'steps' or 'mm'")
+        raise Exception("Units must be 'steps' or 'mm'")
 
+    count = 0
+    for x in range(int(steps)):
+        if go_forward:
+            count += motor.step_forward()
+        else:
+            count += motor.step_backward()
+    print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(),motor.get_max_steps()))
 
 if __name__ == '__main__':
 
@@ -77,8 +73,8 @@ if __name__ == '__main__':
         X_LEFT = 0
         Y_BACK = 0
         Y_FWD = 1
-        Z_UP = 1
-        Z_DOWN = 0
+        Z_UP = 0
+        Z_DOWN = 1
 
         steps_per_mm = {x: 1/0.2, y: 1/0.2, z: 1/0.0064}
 
@@ -118,7 +114,6 @@ if __name__ == '__main__':
         else:
             unit_arg = sys.argv[3].lower()
             move_distance(motor, dist_arg, go_forward, unit_arg)
-        print('Current position: {}'.format(motor.get_pos()))
         config['{}-pos'.format(motor.get_name())] = motor.get_pos()
         write_config(config)
         GPIO.cleanup()
