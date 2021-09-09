@@ -1,66 +1,128 @@
 #!/usr/bin/env python3
-
+import json
 import sys
-import time
-
+import os
 import RPi.GPIO as GPIO
+
 from pb.home_sensor import HomeSensor
 from pb.stepper import Stepper
+from pb.homing_motor import HomingMotor
+
+
+def build(name: str, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int, sensor_pin: int,
+          max_steps: int, inverted: bool) -> HomingMotor:
+    s = HomeSensor(sensor_pin)
+    stepper = Stepper(dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin)
+    return HomingMotor(name, stepper, s, max_steps, inverted)
+
+
+def read_config():
+    try:
+        home = os.path.expanduser('~/')
+        with open(home + '.plotbot.json', 'r') as f:
+            data = json.load(f)
+    except FileNotFoundError:
+        data = {}
+        write_config(data)
+    return data
+
+
+def write_config(data):
+    home = os.path.expanduser('~/')
+    with open(home + '.plotbot.json', 'w') as f:
+        json.dump(data, f)
+        f.write('\n')
+
+
+def move_distance(motor: HomingMotor, dist_arg: int, go_forward: bool, unit_arg:str):
+    global x
+    if unit_arg == "steps":
+        try:
+            steps = int(dist_arg)
+            for x in range(steps):
+                if go_forward:
+                    motor.step_forward()
+                else:
+                    motor.step_forward()
+        except ValueError as verr:
+            print('Distance must be an integer value or \'home\' or \'max\'')
+    elif unit_arg == "mm":
+        try:
+            steps = int(dist_arg) * steps_per_mm[motor]
+            print(steps)
+            for x in range(int(steps)):
+                if go_forward:
+                    motor.step_forward()
+                else:
+                    motor.step_forward()
+        except ValueError as verr:
+            print('Distance must be an integer value or \'home\' or \'max\'')
+    else:
+        print("Units must be 'steps' or 'mm'")
+
 
 if __name__ == '__main__':
 
     try:
         GPIO.setmode(GPIO.BCM)
 
-        Z_DIR = 1
-        Z_STEP = 12
-        Z_MS1 = 21
-        Z_MS2 = 20
-        Z_MS3 = 16
-        z_stepper = Stepper(dir_pin=Z_DIR, step_pin=Z_STEP, ms1_pin=Z_MS1, ms2_pin=Z_MS2, ms3_pin=Z_MS3)
-        z_home = HomeSensor(19)
+        x = build("x", dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13, sensor_pin=24,
+                  max_steps=920, inverted=False)
+        y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
+                  max_steps=950, inverted=False)
+        z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
+                  max_steps=1200, inverted=True)
+
+        X_RIGHT = 1
+        X_LEFT = 0
+        Y_BACK = 0
+        Y_FWD = 1
         Z_UP = 1
         Z_DOWN = 0
 
-        X_DIR = 5
-        X_STEP = 6
-        X_MS1 = 26
-        X_MS2 = 19
-        X_MS3 = 13
-        x_stepper = Stepper(dir_pin=X_DIR, step_pin=X_STEP, ms1_pin=X_MS1, ms2_pin=X_MS2, ms3_pin=X_MS3)
-        x_home = HomeSensor(24)
-        X_RIGHT = 1
-        X_LEFT = 0
+        steps_per_mm = {x: 1/0.2, y: 1/0.2, z: 1/0.0064}
 
-        Y_DIR = 27
-        Y_STEP = 22
-        Y_MS1 = 9
-        Y_MS2 = 10
-        Y_MS3 = 11
-        y_stepper = Stepper(dir_pin=Y_DIR, step_pin=Y_STEP, ms1_pin=Y_MS1, ms2_pin=Y_MS2, ms3_pin=Y_MS3)
-        y_home = HomeSensor(23)
-        Y_BACK = 0
-        Y_FWD = 1
         directions = {'up': Z_UP, 'down': Z_DOWN, 'back': Y_BACK, 'forward': Y_FWD, 'left': X_LEFT, 'right': X_RIGHT}
+
+        config = read_config()
+
+        for motor in [x, y, z]:
+            pos_key = '{}-pos'.format(motor.get_name())
+            if pos_key in config:
+                motor.set_pos(config[pos_key])
+            else:
+                count = motor.go_home()
+                print('{} moved {}/{} steps back to find home'
+                      .format(motor.get_name(), count, motor.get_step_size()))
+                config['{}-pos'.format(motor.get_name())] = 0
 
         dirArg = sys.argv[1].lower()
         if dirArg not in directions:
-            raise Exception('arg1 must be up, down, left, right, forward, or back')
+            raise Exception('Argument 1 must be up, down, left, right, forward, or back')
+        go_forward = directions[dirArg]
 
         if dirArg in ['up', 'down']:
-            stepper = z_stepper
+            motor = z
         elif dirArg in ['left', 'right']:
-            stepper = x_stepper
+            motor = x
         elif dirArg in ['forward', 'back']:
-            stepper = y_stepper
-        stepper.set_step_size(1)
-        stepper.set_direction(directions[dirArg])
-        for x in range(int(sys.argv[2])):
-            stepper.pulse()
-            time.sleep(.001)
+            motor = y
 
-    except KeyboardInterrupt:
+        motor.set_step_size(1)
+        dist_arg = sys.argv[2].lower()
+
+        if dist_arg == 'home':
+            motor.go_home()
+        elif dist_arg == 'max':
+            motor.goto_pos(motor.get_max_steps())
+        else:
+            unit_arg = sys.argv[3].lower()
+            move_distance(motor, dist_arg, go_forward, unit_arg)
+        print('Current position: {}'.format(motor.get_pos()))
+        config['{}-pos'.format(motor.get_name())] = motor.get_pos()
+        write_config(config)
         GPIO.cleanup()
 
-    GPIO.cleanup()
-    sys.exit()
+    except KeyboardInterrupt:
+
+        GPIO.cleanup()

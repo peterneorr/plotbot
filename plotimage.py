@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import logging
+import math
 import threading
 import sys
 import time
@@ -57,29 +58,44 @@ def go_percent(m: HomingMotor, percent: float):
     m.goto_pos(pos)
 
 
-def is_dark_pixel(p) -> bool:
+def avg_pixel_sum(i: Image):
+    ttl = 0
+    pixels = i.load()  # this is not a list
+    width, height = i.size
+    for py in range(height):
+        for px in range(width):
+            cur_pixel = pixels[px, py]
+            ttl = ttl + sum(cur_pixel)
+    return ttl / (width * height)
+
+
+def is_darker_than(p, num) -> bool:
     cur_pixel_mono = sum(p)
-    if cur_pixel_mono < 600:
+    if cur_pixel_mono < num:
+        # print('dark:{}'.format(p))
         return True
+    # print('light:{}'.format(p))
     return False
 
 
 def next_pixel(px, py, width: int, height: int):
-    nx = px+1
+    nx = px + 1
     ny = py
     if nx == width:
-        ny = py+1
+        ny = py + 1
         nx = 0
     if ny == height:
         return -1
     return nx, ny
 
 
+
+
 def main():
     GPIO.setmode(GPIO.BCM)
     x, y, z = init_x(), init_y(), init_z()
-    pen_down = lambda: z.goto_pos(2000)
-    pen_up = lambda: z.goto_pos(1450)
+    pen_down = lambda: z.goto_pos(1220)
+    pen_up = lambda: z.goto_pos(1000)
 
     time.sleep(1)
     try:
@@ -88,24 +104,26 @@ def main():
         y.go_home()
         z.go_home()
 
-        i = Image.open('leaf.png')
+        i = Image.open(sys.argv[1])
+        i.thumbnail((100,100))
         i = i.transpose(Image.FLIP_TOP_BOTTOM)
 
+        avg = avg_pixel_sum(i)
         pixels = i.load()  # this is not a list
         width, height = i.size
         for py in range(height):
             for px in range(width):
                 cur_pixel = pixels[px, py]
                 nxt_pixel = next_pixel(px, py, width, height)
-                print('current px: ({},{}), next px:{})'.format(px, py, nxt_pixel))
+                # print('current px: ({},{}), next px:{})'.format(px, py, nxt_pixel))
 
-                if is_dark_pixel(cur_pixel):
+                if is_darker_than(cur_pixel, avg):
                     go_percent(y, py / height)
                     go_percent(x, px / width)
                     pen_down()
                     if px == width - 1 or py == height - 1:
                         pen_up()
-                    elif nxt_pixel != -1 and not is_dark_pixel(pixels[nxt_pixel]):
+                    elif nxt_pixel != -1 and not is_darker_than(pixels[nxt_pixel], avg):
                         pen_up()
 
         z.go_home()

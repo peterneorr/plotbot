@@ -8,7 +8,6 @@ from .home_sensor import HomeSensor
 from .stepper import Stepper
 
 
-@dataclass
 class HomingMotor:
     def __init__(self, name: str, stepper: Stepper, home_sensor: HomeSensor, max_steps=50, inverted=False,
                  pulse_delay=.001, step_size=1):
@@ -20,8 +19,11 @@ class HomingMotor:
         self.__position = 0
         self.__pulse_delay = pulse_delay
         self.__stepper.set_step_size(step_size)
-        count = self.go_home()
-        print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
+        #count = self.go_home()
+        #print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
+
+    def set_pos(self, p: int):
+        self.__position = p
 
     def get_pulse_delay(self) -> float:
         """Returns the current delay in seconds between stepper motor pulses. Default is .001s  """
@@ -49,11 +51,11 @@ class HomingMotor:
     def go_home(self) -> int:
         step_count = 0
         while not self.is_home():
-            self.backward()
+            self.step_backward()
             step_count += 1
         return step_count
 
-    def backward(self):
+    def step_backward(self):
         if self.is_home():
             return
         if self.__inverted:
@@ -62,7 +64,7 @@ class HomingMotor:
             self.__stepper.set_direction(0)
         self.__pulse()
 
-    def forward(self):
+    def step_forward(self):
         if self.get_pos() >= self.__max_steps:
             return
         if self.__inverted:
@@ -99,10 +101,10 @@ class HomingMotor:
             raise Exception('Cannot move motor {} to position less than 0'.format(self.__name, n, self.__max_steps))
         step_count = 0
         while self.get_pos() < n:
-            self.forward()
+            self.step_forward()
             step_count += 1
         while self.get_pos() > n and not self.is_home():
-            self.backward()
+            self.step_backward()
             step_count += 1
         return step_count
 
