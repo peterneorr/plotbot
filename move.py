@@ -42,7 +42,6 @@ def move(motor: HomingMotor, dist_arg: str, unit_arg: str):
 
 
 def move_absolute(motor: HomingMotor, dist_arg: int, unit_arg: str):
-    global x
     if unit_arg == "steps":
         try:
             pos = int(dist_arg)
@@ -79,16 +78,10 @@ def move_relative(motor: HomingMotor, dist_arg: str, unit_arg: str):
 
     count = 0
     for x in range(int(steps)):
-        if motor.is_inverted():
-            if forward:
-                count += motor.step_backward()
-            else:
-                count += motor.step_forward()
+        if forward:
+            count += motor.step_forward()
         else:
-            if forward:
-                count += motor.step_forward()
-            else:
-                count += motor.step_backward()
+            count += motor.step_backward()
 
     print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(), motor.get_max_steps()))
 
@@ -103,7 +96,7 @@ if __name__ == '__main__':
         y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
                   max_steps=950, inverted=False)
         z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
-                  max_steps=1200, inverted=True)
+                  max_steps=2000, inverted=True)
 
         X_RIGHT = 1
         X_LEFT = 0
@@ -139,9 +132,13 @@ if __name__ == '__main__':
         dist_arg = sys.argv[2].lower()
 
         if dist_arg == 'home':
-            motor.go_home()
+            count = motor.go_home()
+            print('Moved {} steps to get to current position: {}/{}'
+                  .format(count, motor.get_pos(), motor.get_max_steps()))
         elif dist_arg == 'max':
-            motor.goto_pos(motor.get_max_steps())
+            count = motor.goto_pos(motor.get_max_steps())
+            print('Moved {} steps to get to current position: {}/{}'
+                  .format(count, motor.get_pos(), motor.get_max_steps()))
         else:
             unit_arg = sys.argv[3].lower()
             move(motor, dist_arg, unit_arg)
