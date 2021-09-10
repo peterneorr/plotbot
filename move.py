@@ -34,28 +34,64 @@ def write_config(data):
         f.write('\n')
 
 
-def move_distance(motor: HomingMotor, dist_arg: int, go_forward: bool, unit_arg:str):
+def move(motor: HomingMotor, dist_arg: str, unit_arg: str):
+    if dist_arg.startswith('+') or dist_arg.startswith('-'):
+        move_relative(motor, dist_arg, unit_arg)
+    else:
+        move_absolute(motor, dist_arg, unit_arg)
+
+
+def move_absolute(motor: HomingMotor, dist_arg: int, unit_arg: str):
     global x
     if unit_arg == "steps":
         try:
-            steps = int(dist_arg)
+            pos = int(dist_arg)
         except ValueError as verr:
             print('Distance must be an integer value or \'home\' or \'max\'')
     elif unit_arg == "mm":
         try:
-            steps = int(dist_arg) * steps_per_mm[motor]
+            pos = int(dist_arg) * steps_per_mm[motor]
         except ValueError as verr:
             print('Distance must be an integer value or \'home\' or \'max\'')
     else:
         raise Exception("Units must be 'steps' or 'mm'")
 
+    count = motor.goto_pos(pos)
+    print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(), motor.get_max_steps()))
+
+
+def move_relative(motor: HomingMotor, dist_arg: str, unit_arg: str):
+    if dist_arg[0] == '+':
+        forward = True
+    else:
+        forward = False
+    try:
+        num = int(str(dist_arg)[1:])
+    except ValueError as verr:
+        print('Distance must be an integer value or \'home\' or \'max\'')
+
+    if unit_arg == "steps":
+        steps = num
+    elif unit_arg == "mm":
+        steps = num * steps_per_mm[motor]
+    else:
+        raise Exception("Units must be 'steps' or 'mm'")
+
     count = 0
     for x in range(int(steps)):
-        if go_forward:
-            count += motor.step_forward()
+        if motor.is_inverted():
+            if forward:
+                count += motor.step_backward()
+            else:
+                count += motor.step_forward()
         else:
-            count += motor.step_backward()
-    print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(),motor.get_max_steps()))
+            if forward:
+                count += motor.step_forward()
+            else:
+                count += motor.step_backward()
+
+    print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(), motor.get_max_steps()))
+
 
 if __name__ == '__main__':
 
@@ -76,9 +112,14 @@ if __name__ == '__main__':
         Z_UP = 0
         Z_DOWN = 1
 
-        steps_per_mm = {x: 1/0.2, y: 1/0.2, z: 1/0.0064}
+        steps_per_mm = {x: 1 / 0.2, y: 1 / 0.2, z: 1 / 0.0064}
 
-        directions = {'up': Z_UP, 'down': Z_DOWN, 'back': Y_BACK, 'forward': Y_FWD, 'left': X_LEFT, 'right': X_RIGHT}
+        # directions = {'up': Z_UP, 'down': Z_DOWN, 'back': Y_BACK, 'forward': Y_FWD, 'left': X_LEFT, 'right': X_RIGHT}
+        axis = {'x': x, 'y': y, 'z': z}
+
+        dirArg = sys.argv[1].lower()
+        if dirArg not in axis:
+            raise Exception('Argument 1 must be x, y or z')
 
         config = read_config()
 
@@ -92,17 +133,7 @@ if __name__ == '__main__':
                       .format(motor.get_name(), count, motor.get_step_size()))
                 config['{}-pos'.format(motor.get_name())] = 0
 
-        dirArg = sys.argv[1].lower()
-        if dirArg not in directions:
-            raise Exception('Argument 1 must be up, down, left, right, forward, or back')
-        go_forward = directions[dirArg]
-
-        if dirArg in ['up', 'down']:
-            motor = z
-        elif dirArg in ['left', 'right']:
-            motor = x
-        elif dirArg in ['forward', 'back']:
-            motor = y
+        motor = axis[dirArg]
 
         motor.set_step_size(1)
         dist_arg = sys.argv[2].lower()
@@ -113,11 +144,10 @@ if __name__ == '__main__':
             motor.goto_pos(motor.get_max_steps())
         else:
             unit_arg = sys.argv[3].lower()
-            move_distance(motor, dist_arg, go_forward, unit_arg)
+            move(motor, dist_arg, unit_arg)
         config['{}-pos'.format(motor.get_name())] = motor.get_pos()
         write_config(config)
         GPIO.cleanup()
 
-    except KeyboardInterrupt:
-
+    except Exception:
         GPIO.cleanup()
