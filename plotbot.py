@@ -54,7 +54,7 @@ def init_z() -> HomingMotor:
 def wave(m: HomingMotor, percent: float, signal):
     """Runs indefinitely.  Intended to run in a thread"""
     if percent > 1 or percent < 0:
-        raise Exception('Wave percent must be between 0 and 1')
+        raise RuntimeError('Wave percent must be between 0 and 1')
     center = m.get_max_steps() / 2
     max = percent * m.get_max_steps()
     min = m.get_max_steps() - max

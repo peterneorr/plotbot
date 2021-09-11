@@ -11,44 +11,18 @@ from pb.homing_motor import HomingMotor
 from pb.stepper import Stepper
 
 
-def init_x() -> HomingMotor:
-    dir = 5
-    step = 6
-    ms1 = 26
-    ms2 = 19
-    ms3 = 13
-    sensor = HomeSensor(24)
-    stepper = Stepper(dir_pin=dir, step_pin=step, ms1_pin=ms1, ms2_pin=ms2, ms3_pin=ms3)
-    xmax = 904
-    m = HomingMotor("X-Motor", stepper, sensor, xmax, False)
-    return m
+
+def build(name: str, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int, sensor_pin: int,
+          max_steps: int, inverted: bool, pulse_delay: float = .001) -> HomingMotor:
+    s = HomeSensor(sensor_pin)
+    stepper = Stepper(dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin)
+    return HomingMotor(name, stepper, s, max_steps, inverted, pulse_delay=pulse_delay)
 
 
-def init_y() -> HomingMotor:
-    y_dir = 27
-    y_step = 22
-    y_ms1 = 9
-    y_ms2 = 10
-    y_ms3 = 11
-    stepper = Stepper(dir_pin=y_dir, step_pin=y_step, ms1_pin=y_ms1, ms2_pin=y_ms2, ms3_pin=y_ms3)
-    sensor = HomeSensor(23)
-    ymax = 950
-    m = HomingMotor("Y-Motor", stepper, sensor, ymax, False, .001)
-    m.set_step_size(2)
-    return m
+UP = 700
+DOWN = 956
 
 
-def init_z() -> HomingMotor:
-    z_dir = 1
-    z_step = 12
-    z_ms1 = 21
-    z_ms2 = 20
-    z_ms3 = 16
-    stepper = Stepper(dir_pin=z_dir, step_pin=z_step, ms1_pin=z_ms1, ms2_pin=z_ms2, ms3_pin=z_ms3)
-    sensor = HomeSensor(25)
-    zmax = 3422
-    m = HomingMotor("Z-Motor", stepper, sensor, zmax, True)
-    return m
 
 
 
@@ -60,9 +34,14 @@ def go_percent(m: HomingMotor, percent: float):
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    x, y, z = init_x(), init_y(), init_z()
-    pen_down = lambda: z.goto_pos(2000)
-    pen_up = lambda: z.goto_pos(1450)
+    x = build("x", dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13, sensor_pin=24,
+              max_steps=920, inverted=False, pulse_delay=.0001)
+    y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
+              max_steps=950, inverted=False)
+    z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
+              max_steps=956, inverted=True, pulse_delay=.0005)
+    pen_down = lambda: z.goto_pos(DOWN)
+    pen_up = lambda: z.goto_pos(UP)
 
     def border():
         # draw bounding box
@@ -77,21 +56,21 @@ def main():
 
     time.sleep(1)
     try:
-
+        z.go_home()
         x.go_home()
         y.go_home()
-        z.go_home()
 
-        for j in range(1, 100):
-            go_percent(y, j / 100)
-            for i in range(1, 100):
-                go_percent(x, i / 100)
+        for j in range(100, 200):
+            go_percent(y, j / 200)
+            for i in range(1, 200):
+                go_percent(x, i / 200)
                 pen_down()
                 pen_up()
         z.go_home()
         GPIO.cleanup()
 
     except KeyboardInterrupt:
+        z.go_home()
         GPIO.cleanup()
 
 

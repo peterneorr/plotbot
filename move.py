@@ -16,6 +16,7 @@ Z_UP = 0
 Z_DOWN = 1
 
 steps_per_mm = {'x': 1 / 0.2, 'y': 1 / 0.2, 'z': 1 / 0.0064}
+margins = {'x': 4 / 0.2, 'y': 4 / 0.2, 'z': 0}
 
 
 def build(name: str, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int, sensor_pin: int,
@@ -39,11 +40,11 @@ def read_config():
 def write_config(data):
     home = os.path.expanduser('~/')
     with open(home + '.plotbot.json', 'w') as f:
-        json.dump(data, f)
+        json.dump(data, f, indent=4, sort_keys=True)
         f.write('\n')
 
 
-def move(motor: HomingMotor, dist_arg: str, unit_arg: str):
+def move_distance(motor: HomingMotor, dist_arg: str, unit_arg: str):
     if unit_arg not in ['steps', 'mm']:
         raise RuntimeError("Units must be 'steps' or 'mm'")
     if dist_arg.startswith('+') or dist_arg.startswith('-'):
@@ -96,26 +97,58 @@ def move_relative(motor: HomingMotor, dist_arg: str, unit_arg: str):
     print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(), motor.get_max_steps()))
 
 
-def move_on_axis(dir_arg, axis, config):
+def move_to_preset(motor: HomingMotor, dist_arg: str):
+    if dist_arg == 'min':
+        count = motor.go_home()
+        print('Moved {} steps to get to MIN position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+    elif dist_arg == 'home':
+        count = motor.goto_pos(margins[motor.get_name()])
+        print('Moved {} steps to get to HOME position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+    elif dist_arg == 'mid':
+        margin = margins[motor.get_name()]
+        mid = ((motor.get_max_steps() - margin) / 2) + margin
+        count = motor.goto_pos(mid)
+        print('Moved {} steps to get to MID position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+    elif dist_arg == 'max':
+        count = motor.goto_pos(motor.get_max_steps())
+        print('Moved {} steps to get to MAX position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+
+
+def move_on_axis(dir_arg, axis):
     motor = axis[dir_arg]
     motor.set_step_size(1)
     dist_arg = sys.argv[2].lower()
 
-    if dist_arg == 'home':
-        count = motor.go_home()
-        print('Moved {} steps to get to current position: {}/{}'
-              .format(count, motor.get_pos(), motor.get_max_steps()))
-    elif dist_arg == 'max':
-        count = motor.goto_pos(motor.get_max_steps())
-        print('Moved {} steps to get to current position: {}/{}'
-              .format(count, motor.get_pos(), motor.get_max_steps()))
+    if dist_arg in ('min', 'home', 'mid', 'max'):
+        move_to_preset(motor, dist_arg)
     else:
         if len(sys.argv) < 4:
             raise RuntimeError("Missing units argument.  Try 'steps' or 'mm'")
         else:
             unit_arg = sys.argv[3].lower()
-        move(motor, dist_arg, unit_arg)
-    config['{}-pos'.format(motor.get_name())] = motor.get_pos()
+        move_distance(motor, dist_arg, unit_arg)
+
+
+def init_motor_positions(x: HomingMotor, y: HomingMotor, z: HomingMotor, config: dict) -> dict:
+    if 'position' not in config:
+        position = {}
+    else:
+        position = config['position']
+    for motor in [z, x, y]:
+        pos_key = motor.get_name()
+        if pos_key in position:
+            motor.set_pos(position[pos_key])
+        else:
+            print('{} position unknown. Calibrating...'.format(motor.get_name()))
+            count = motor.go_home()
+            print('{} moved {}/{} steps back to find home'
+                  .format(motor.get_name(), count, motor.get_step_size()))
+            position[pos_key] = 0
+    return position
 
 
 def main():
@@ -123,11 +156,11 @@ def main():
         GPIO.setmode(GPIO.BCM)
 
         x = build("x", dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13, sensor_pin=24,
-                  max_steps=920, inverted=False, pulse_delay=.0001)
+                  max_steps=920, inverted=False, pulse_delay=.001)
         y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
-                  max_steps=950, inverted=False)
+                  max_steps=930, inverted=False)
         z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
-                  max_steps=2000, inverted=True, pulse_delay=.00001)
+                  max_steps=4000, inverted=True, pulse_delay=.00001)
 
         axis = {'x': x, 'y': y, 'z': z}
         if len(sys.argv) < 2:
@@ -139,25 +172,25 @@ def main():
             raise RuntimeError('Argument 1 must be reset, x, y, or z')
 
         config = read_config()
-
-        for motor in [z, x, y]:
-            pos_key = '{}-pos'.format(motor.get_name())
-            if pos_key in config:
-                motor.set_pos(config[pos_key])
-            else:
-                count = motor.go_home()
-                print('{} moved {}/{} steps back to find home'
-                      .format(motor.get_name(), count, motor.get_step_size()))
-                config['{}-pos'.format(motor.get_name())] = 0
+        init_motor_positions(x, y, z, config)
 
         if dir_arg in axis:
-            move_on_axis(dir_arg, axis, config)
+            move_on_axis(dir_arg, axis)
 
+        position = {}
+        for m in [x, y, z]:
+            position[m.get_name()] = m.get_pos()
+            config[m.get_name()] = m.get_config()
+
+        config['margins'] = margins
+        config['position'] = position
         write_config(config)
 
     except KeyboardInterrupt:
-        # if program was interrupted, then assume nothing about motor positions
-        write_config({})
+        # if program was interrupted, assume nothing about motor positions
+        # and force a reset next execution.
+        config.pop('position', None)
+        write_config(config)
     except RuntimeError as ex:
         print('Error: {}'.format(ex))
     finally:

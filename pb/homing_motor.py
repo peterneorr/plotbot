@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import json
 import sys
 import time
 from dataclasses import dataclass
@@ -19,8 +20,17 @@ class HomingMotor:
         self.__position = 0
         self.__pulse_delay = pulse_delay
         self.__stepper.set_step_size(step_size)
-        #count = self.go_home()
-        #print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
+        # count = self.go_home()
+        # print('{} init - moved {}/{} steps back to find home'.format(name, count, self.__stepper.get_step_size()))
+
+    def get_config(self):
+        return {'name': self.__name,
+                'max_steps': self.__max_steps,
+                'inverted': self.__inverted,
+                'pulse_delay': self.__pulse_delay,
+                'stepper': self.__stepper.get_config(),
+                'sensor': self.__sensor.get_config()
+                }
 
     def set_pos(self, p: int):
         self.__position = p
@@ -99,10 +109,10 @@ class HomingMotor:
 
     def goto_pos(self, n: int) -> int:
         if n > self.__max_steps:
-            raise Exception(
+            raise RuntimeError(
                 'Cannot move motor {} to {}. (beyond max steps of {})'.format(self.__name, n, self.__max_steps))
         elif n < 0:
-            raise Exception('Cannot move motor {} to position less than 0'.format(self.__name, n, self.__max_steps))
+            raise RuntimeError('Cannot move motor {} to position less than 0'.format(self.__name, n, self.__max_steps))
         step_count = 0
         while self.get_pos() < n:
             self.step_forward()
@@ -121,19 +131,15 @@ class HomingMotor:
         return self.__stepper.get_step_size()
 
 
-if __name__ == '__main__':
+def main():
     try:
         GPIO.setmode(GPIO.BCM)
-        STEP = 2
-        DIR = 3
-        MS1 = 4
-        MS2 = 5
-        MS3 = 6
-        sensor = HomeSensor(17)
-        stepper = Stepper(dir_pin=DIR, step_pin=STEP, ms1_pin=MS1, ms2_pin=MS2, ms3_pin=MS3)
+        sensor = HomeSensor(24)
+        stepper = Stepper(dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13)
         stepper.set_step_size(4)
 
         m = HomingMotor("XMotor", stepper, sensor, 460)
+
         for x in range(3):
             count = m.goto_pos(m.get_max_steps() / 4)
             print('{} moved {} steps to get to position {}'.format(m.get_name(), count, m.get_pos()))
@@ -142,5 +148,10 @@ if __name__ == '__main__':
         count = m.goto_pos(m.get_max_steps() / 2)
         print('{} moved {} steps to get to position {}'.format(m.get_name(), count, m.get_pos()))
     except KeyboardInterrupt:
+        pass
+    finally:
         GPIO.cleanup()
-    sys.exit()
+
+
+if __name__ == '__main__':
+    main()

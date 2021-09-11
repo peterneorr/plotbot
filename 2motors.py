@@ -58,7 +58,7 @@ def setStepSize(ms1,ms2,ms3, speed):
         GPIO.output(ms2, 0)
         GPIO.output(ms3, 0)
     else:
-        raise Exception('Stepper speed {} invalid.  Must be 1, 2, 4, 8, or 16'.format(speed))
+        raise RuntimeError('Stepper speed {} invalid.  Must be 1, 2, 4, 8, or 16'.format(speed))
 
 def pulse(pin):
     GPIO.output(pin,1)

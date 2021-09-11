@@ -8,7 +8,7 @@ from dataclasses import dataclass
 usleep = lambda x: time.sleep(x / 1000000.0)
 pulse_length_us = 200
 
-@dataclass
+
 class Stepper:
     def __init__(self, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int):
         self.__dir_pin = dir_pin
@@ -21,13 +21,22 @@ class Stepper:
         for pin in [self.__dir_pin, self.__step_pin, self.__ms1_pin, self.__ms2_pin, self.__ms3_pin]:
             GPIO.setup(pin, GPIO.OUT)
 
+    def get_config(self):
+        return {'dir_pin': self.__dir_pin,
+                'step_pin': self.__step_pin,
+                'ms1_pin': self.__ms1_pin,
+                'ms2_pin': self.__ms2_pin,
+                'ms3_pin': self.__ms3_pin,
+                'step_size': self.__step_size
+                }
+
     def set_direction(self, direction):
         if direction == 1:
             self.__direction = 1
         elif direction == 0:
             self.__direction = 0
         else:
-            raise Exception('Stepper direction must be either 1 or 0')
+            raise RuntimeError('Stepper direction must be either 1 or 0')
         GPIO.output(self.__dir_pin, self.__direction)
 
     def get_direction(self):
@@ -69,11 +78,11 @@ class Stepper:
             GPIO.output(self.__ms2_pin, 0)
             GPIO.output(self.__ms3_pin, 0)
         else:
-            raise Exception('Stepper step_size {} invalid.  Must be 1, 2, 4, 8, or 16'.format(step_size))
+            raise RuntimeError('Stepper step_size {} invalid.  Must be 1, 2, 4, 8, or 16'.format(step_size))
         time.sleep(.02)
 
 
-if __name__ == '__main__':
+def main():
     try:
         GPIO.setmode(GPIO.BCM)
         # X PINS
@@ -121,5 +130,10 @@ if __name__ == '__main__':
                     # time.sleep(tick)
 
     except KeyboardInterrupt:
+        pass
+    finally:
         GPIO.cleanup()
-    sys.exit()
+
+
+if __name__ == '__main__':
+    main()
