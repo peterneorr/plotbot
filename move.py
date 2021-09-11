@@ -96,6 +96,28 @@ def move_relative(motor: HomingMotor, dist_arg: str, unit_arg: str):
     print('Moved {} steps to get to current position: {}/{}'.format(count, motor.get_pos(), motor.get_max_steps()))
 
 
+def move_on_axis(dir_arg, axis, config):
+    motor = axis[dir_arg]
+    motor.set_step_size(1)
+    dist_arg = sys.argv[2].lower()
+
+    if dist_arg == 'home':
+        count = motor.go_home()
+        print('Moved {} steps to get to current position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+    elif dist_arg == 'max':
+        count = motor.goto_pos(motor.get_max_steps())
+        print('Moved {} steps to get to current position: {}/{}'
+              .format(count, motor.get_pos(), motor.get_max_steps()))
+    else:
+        if len(sys.argv) < 4:
+            raise RuntimeError("Missing units argument.  Try 'steps' or 'mm'")
+        else:
+            unit_arg = sys.argv[3].lower()
+        move(motor, dist_arg, unit_arg)
+    config['{}-pos'.format(motor.get_name())] = motor.get_pos()
+
+
 def main():
     try:
         GPIO.setmode(GPIO.BCM)
@@ -129,25 +151,8 @@ def main():
                 config['{}-pos'.format(motor.get_name())] = 0
 
         if dir_arg in axis:
-            motor = axis[dir_arg]
-            motor.set_step_size(1)
-            dist_arg = sys.argv[2].lower()
+            move_on_axis(dir_arg, axis, config)
 
-            if dist_arg == 'home':
-                count = motor.go_home()
-                print('Moved {} steps to get to current position: {}/{}'
-                      .format(count, motor.get_pos(), motor.get_max_steps()))
-            elif dist_arg == 'max':
-                count = motor.goto_pos(motor.get_max_steps())
-                print('Moved {} steps to get to current position: {}/{}'
-                      .format(count, motor.get_pos(), motor.get_max_steps()))
-            else:
-                if len(sys.argv) < 4:
-                    raise RuntimeError("Missing units argument.  Try 'steps' or 'mm'")
-                else:
-                    unit_arg = sys.argv[3].lower()
-                move(motor, dist_arg, unit_arg)
-            config['{}-pos'.format(motor.get_name())] = motor.get_pos()
         write_config(config)
 
     except KeyboardInterrupt:
