@@ -131,6 +131,42 @@ class HomingMotor:
         return self.__stepper.get_step_size()
 
 
+def build_from_config(config: dict, name: str) -> HomingMotor:
+    """Build the named HomingMotor from data found in config"""
+    def check_for_key(key, cfg):
+        if key not in cfg:
+            raise RuntimeError('Key  "{}" for HomingMotor "{}" not found.'.format(key, name))
+        else:
+            return cfg[key]
+    if name not in config:
+        raise RuntimeError('Config for HomingMotor "{}" not found.'.format(name))
+    my_config = config[name]
+    inverted = check_for_key('inverted', my_config)
+    max_steps = check_for_key('max_steps', my_config)
+    name = check_for_key('name', my_config)
+    pulse_delay = float(check_for_key('pulse_delay', my_config))
+    sensor = check_for_key('sensor', my_config)
+    stepper = check_for_key('stepper', my_config)
+    dir_pin = int(check_for_key("dir_pin", stepper))
+    ms1_pin = int(check_for_key("ms1_pin", stepper))
+    ms2_pin = int(check_for_key("ms2_pin", stepper))
+    ms3_pin = int(check_for_key("ms3_pin", stepper))
+    step_pin = int(check_for_key("step_pin", stepper))
+    step_size = int(check_for_key("step_size", stepper))
+    input_pin = int(check_for_key('input_pin', sensor))
+    m = build(name, dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin, input_pin, max_steps, inverted, pulse_delay)
+    m.set_step_size(step_size)
+    # print('{} built from config OK'.format(m.get_name()))
+    return m
+
+
+def build(name: str, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int, sensor_pin: int,
+          max_steps: int, inverted: bool, pulse_delay: float = .001) -> HomingMotor:
+    s = HomeSensor(sensor_pin)
+    stepper = Stepper(dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin)
+    return HomingMotor(name, stepper, s, max_steps, inverted, pulse_delay=pulse_delay)
+
+
 def main():
     try:
         GPIO.setmode(GPIO.BCM)
@@ -142,11 +178,11 @@ def main():
 
         for x in range(3):
             count = m.goto_pos(m.get_max_steps() / 4)
-            print('{} moved {} steps to get to position {}'.format(m.get_name(), count, m.get_pos()))
+            print('{} {} pulses to get to position {}'.format(m.get_name(), count, m.get_pos()))
             x = m.go_home()
-            print('{} moved {} steps back to find home'.format(m.get_name(), x))
+            print('{} {} pulses back to find home'.format(m.get_name(), x))
         count = m.goto_pos(m.get_max_steps() / 2)
-        print('{} moved {} steps to get to position {}'.format(m.get_name(), count, m.get_pos()))
+        print('{} {} pulses to get to position {}'.format(m.get_name(), count, m.get_pos()))
     except KeyboardInterrupt:
         pass
     finally:
