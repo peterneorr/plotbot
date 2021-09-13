@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
-import json
+
 import sys
+import json
 import os
 import RPi.GPIO as GPIO
 
-from pb.home_sensor import HomeSensor
-from pb.stepper import Stepper
-from pb.homing_motor import HomingMotor, build_from_config, build
+from pb.homing_motor import HomingMotor
+import pb.plotbot as PB
 
 X_RIGHT = 1
 X_LEFT = 0
@@ -16,25 +16,6 @@ Z_UP = 0
 Z_DOWN = 1
 
 steps_per_mm = {'x': 1 / 0.2, 'y': 1 / 0.2, 'z': 1 / 0.0064}
-
-
-
-def read_config():
-    try:
-        home = os.path.expanduser('~/')
-        with open(home + '.plotbot.json', 'r') as f:
-            data = json.load(f)
-    except FileNotFoundError:
-        data = {}
-        write_config(data)
-    return data
-
-
-def write_config(data):
-    home_dir = os.path.expanduser('~/')
-    with open(home_dir + '.plotbot.json', 'w') as f:
-        json.dump(data, f, indent=4, sort_keys=True)
-        f.write('\n')
 
 
 def move_distance(motor: HomingMotor, dist_arg: str, unit_arg: str):
@@ -125,55 +106,12 @@ def move_motor(m: HomingMotor, named_points: dict):
         move_distance(m, dist_arg, unit_arg)
 
 
-def init_motors(config: dict) -> list:
-    try:
-        x = build_from_config(config, 'x')
-    except RuntimeError:
-        x = build("x", dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13, sensor_pin=24,
-                  max_steps=770, inverted=False, pulse_delay=.001)
-    try:
-        y = build_from_config(config, 'y')
-    except RuntimeError:
-        y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
-                  max_steps=905, inverted=False)
-    try:
-        z = build_from_config(config, 'z')
-    except RuntimeError:
-        z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
-                  max_steps=4000, inverted=True, pulse_delay=.00001)
-
-    if 'position' not in config:
-        position = {}
-    else:
-        position = config['position']
-    for motor in [z, x, y]:
-        pos_key = motor.get_name()
-        if pos_key in position:
-            motor.set_pos(position[pos_key])
-        else:
-            print('{} position unknown. Calibrating...'.format(motor.get_name()))
-            count = motor.go_home()
-            print('{} moved {}/{} steps back to find MIN'
-                  .format(motor.get_name(), count, motor.get_step_size()))
-            position[pos_key] = 0
-    return x, y, z
-
-
 def set_speed(m: HomingMotor):
     if len(sys.argv) < 4:
         raise RuntimeError("Missing required step size argument")
     speed = int(sys.argv[3])
     m.set_step_size(speed)
     print('Step size for {} set to 1/{}'.format(m.get_name(), m.get_step_size()))
-
-
-def save(config: dict, x: HomingMotor, y: HomingMotor, z: HomingMotor):
-    position = {}
-    for m in [x, y, z]:
-        position[m.get_name()] = m.get_pos()
-        config[m.get_name()] = m.get_config()
-    config['position'] = position
-    write_config(config)
 
 
 def set_point(m: HomingMotor, name: str, config: dict):
@@ -192,10 +130,10 @@ def main():
         GPIO.setmode(GPIO.BCM)
 
         if sys.argv[1].lower() == 'reset':
-            write_config({})
+            PB.write_config({})
 
-        config = read_config()
-        x, y, z = init_motors(config)
+        config = PB.read_config()
+        x, y, z = PB.init_motors(config)
         motors = {'x': x, 'y': y, 'z': z}
 
         if len(sys.argv) > 2:
@@ -213,13 +151,13 @@ def main():
                 raise RuntimeError('1st argument must be reset, x, y, or z')
 
         # save current state
-        save(config, x, y, z)
+        PB.save(config, x, y, z)
 
     except KeyboardInterrupt:
         # if program was interrupted, assume nothing about motor positions
         # and force a reset next execution.
         config.pop('position', None)
-        write_config(config)
+        PB.write_config(config)
     except RuntimeError as ex:
         print('Error: {}'.format(ex))
     finally:
