@@ -6,70 +6,72 @@ import time
 import threading
 
 import RPi.GPIO as GPIO
-from pb.home_sensor import HomeSensor
+
 from pb.homing_motor import HomingMotor
-from pb.stepper import Stepper
-
-
-
-def build(name: str, dir_pin: int, step_pin: int, ms1_pin: int, ms2_pin: int, ms3_pin: int, sensor_pin: int,
-          max_steps: int, inverted: bool, pulse_delay: float = .001) -> HomingMotor:
-    s = HomeSensor(sensor_pin)
-    stepper = Stepper(dir_pin, step_pin, ms1_pin, ms2_pin, ms3_pin)
-    return HomingMotor(name, stepper, s, max_steps, inverted, pulse_delay=pulse_delay)
-
-
-UP = 700
-DOWN = 956
-
-
-
-
-
-
-def go_percent(m: HomingMotor, percent: float):
-    pos = percent * m.get_max_steps()
-    m.goto_pos(pos)
+import pb.plotbot as PB
 
 
 def main():
     GPIO.setmode(GPIO.BCM)
-    x = build("x", dir_pin=5, step_pin=6, ms1_pin=26, ms2_pin=19, ms3_pin=13, sensor_pin=24,
-              max_steps=920, inverted=False, pulse_delay=.0001)
-    y = build("y", dir_pin=27, step_pin=22, ms1_pin=9, ms2_pin=10, ms3_pin=11, sensor_pin=23,
-              max_steps=950, inverted=False)
-    z = build("z", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
-              max_steps=956, inverted=True, pulse_delay=.0005)
-    pen_down = lambda: z.goto_pos(DOWN)
-    pen_up = lambda: z.goto_pos(UP)
+
+    config = PB.read_config()
+    x, y, z = PB.init_motors(config)
+    z.go_home()
+    x.go_home()
+    y.go_home()
+
+    x_home = PB.named_point(config, "x", "home")
+    y_home = PB.named_point(config, "y", "home")
+    up = PB.named_point(config, "z", "up")
+    down = PB.named_point(config, "z", "down")
+    x.go_home = lambda: x.goto_pos(x_home)
+    y.go_home = lambda: y.goto_pos(y_home)
+    pen_down = lambda: z.goto_pos(down)
+    pen_up = lambda: z.goto_pos(up)
 
     def border():
         # draw bounding box
+        pen_up()
         x.go_home()
         y.go_home()
-        pen_down();
+        pen_down()
         x.goto_pos(x.get_max_steps())
         y.goto_pos(y.get_max_steps())
         x.go_home()
         y.go_home()
         pen_up()
 
-    time.sleep(1)
     try:
-        z.go_home()
         x.go_home()
         y.go_home()
+        #border()
+        y_center = y_home + (y.get_max_steps() - y_home) / 2
+        x_center = x_home + (x.get_max_steps() - x_home) / 2
 
-        for j in range(100, 200):
-            go_percent(y, j / 200)
-            for i in range(1, 200):
-                go_percent(x, i / 200)
-                pen_down()
-                pen_up()
-        z.go_home()
+        x.goto_pos(x_center)
+        y.goto_pos(y_center)
+        px = x_center
+        py = y_center
+        i = 1
+        pen_down()
+        while y.get_max_steps() > py > y_home and\
+                x.get_max_steps() > px > x_home:
+
+            px += i * 10
+            x.goto_pos(px)
+            py += i * 10
+            y.goto_pos(py)
+            i += 1
+            px -= i * 10
+            x.goto_pos(px)
+            py -= i * 10
+            y.goto_pos(py)
+            i += 1
+        pen_up()
         GPIO.cleanup()
 
     except KeyboardInterrupt:
+        print("shutting down...")
         z.go_home()
         GPIO.cleanup()
 

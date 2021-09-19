@@ -128,11 +128,10 @@ def set_point(m: HomingMotor, name: str, config: dict):
 def main():
     try:
         GPIO.setmode(GPIO.BCM)
-
-        if sys.argv[1].lower() == 'reset':
-            PB.write_config({})
-
         config = PB.read_config()
+        if sys.argv[1].lower() == 'reset':
+            config['position'] = {}
+
         x, y, z = PB.init_motors(config)
         motors = {'x': x, 'y': y, 'z': z}
 
