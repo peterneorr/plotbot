@@ -211,7 +211,7 @@ def save_profile(config, name):
     global current_profile
     profiles = config['profiles']
     original = [p for p in profiles if p['id'] == current_profile][0]
-    exists = [p for p in profiles if p['id'] == name][0]
+    exists = [p for p in profiles if p['id'] == name]
     if exists:
         print("Error: profile '{}' already exists".format(name))
         return
