@@ -46,9 +46,9 @@ if __name__ == '__main__':
         z = build("Z-Motor", dir_pin=1, step_pin=12, ms1_pin=21, ms2_pin=20, ms3_pin=16, sensor_pin=25,
                   max_steps=1200, inverted=True)
 
-        move(x)
-        move(y)
-        move(z)
+        #move(x)
+        #move(y)
+        #move(z)
         z.go_home()
         y.go_home()
         x.go_home()

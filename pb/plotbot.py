@@ -1,10 +1,14 @@
 import json
 import os
+import RPi.GPIO as GPIO
+
 
 from pb.homing_motor import HomingMotor, build_from_config, build
 
 
 def init_motors(config: dict) -> list:
+    GPIO.setmode(GPIO.BCM)
+
     try:
         x = build_from_config(config, 'x')
     except RuntimeError:

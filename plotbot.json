@@ -1,0 +1,86 @@
+{
+    "current-profile": "default",
+    "position": {
+        "x": 2.0,
+        "y": 0,
+        "z": 3358.0
+    },
+    "profiles": [
+        {
+            "id": "default",
+            "named-points": {
+                "x": {
+                    "foobaz": 500.0,
+                    "home": 20.0
+                },
+                "y": {
+                    "home": 130.0
+                },
+                "z": {
+                    "down": 3592.0,
+                    "up": 3358.0
+                }
+            }
+        },
+        {
+            "id": "a"
+        },
+        {
+            "id": "d"
+        },
+        {
+            "id": "fizz"
+        }
+    ],
+    "x": {
+        "inverted": false,
+        "max_steps": 770,
+        "name": "x",
+        "pulse_delay": 0.001,
+        "sensor": {
+            "input_pin": 24
+        },
+        "stepper": {
+            "dir_pin": 5,
+            "ms1_pin": 26,
+            "ms2_pin": 19,
+            "ms3_pin": 13,
+            "step_pin": 6,
+            "step_size": 1
+        }
+    },
+    "y": {
+        "inverted": false,
+        "max_steps": 905,
+        "name": "y",
+        "pulse_delay": 0.001,
+        "sensor": {
+            "input_pin": 23
+        },
+        "stepper": {
+            "dir_pin": 27,
+            "ms1_pin": 9,
+            "ms2_pin": 10,
+            "ms3_pin": 11,
+            "step_pin": 22,
+            "step_size": 1
+        }
+    },
+    "z": {
+        "inverted": true,
+        "max_steps": 4000,
+        "name": "z",
+        "pulse_delay": 1e-05,
+        "sensor": {
+            "input_pin": 25
+        },
+        "stepper": {
+            "dir_pin": 1,
+            "ms1_pin": 21,
+            "ms2_pin": 20,
+            "ms3_pin": 16,
+            "step_pin": 12,
+            "step_size": 1
+        }
+    }
+}

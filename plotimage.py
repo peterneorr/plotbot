@@ -6,51 +6,12 @@ import sys
 import time
 import threading
 
-import RPi.GPIO as GPIO
+import  RPi.GPIO as GPIO
 from pb.home_sensor import HomeSensor
 from pb.homing_motor import HomingMotor
 from pb.stepper import Stepper
 from PIL import Image
-
-
-def init_x() -> HomingMotor:
-    dir = 5
-    step = 6
-    ms1 = 26
-    ms2 = 19
-    ms3 = 13
-    sensor = HomeSensor(24)
-    stepper = Stepper(dir_pin=dir, step_pin=step, ms1_pin=ms1, ms2_pin=ms2, ms3_pin=ms3)
-    xmax = 904
-    m = HomingMotor("X-Motor", stepper, sensor, xmax, False)
-    return m
-
-
-def init_y() -> HomingMotor:
-    y_dir = 27
-    y_step = 22
-    y_ms1 = 9
-    y_ms2 = 10
-    y_ms3 = 11
-    stepper = Stepper(dir_pin=y_dir, step_pin=y_step, ms1_pin=y_ms1, ms2_pin=y_ms2, ms3_pin=y_ms3)
-    sensor = HomeSensor(23)
-    ymax = 950
-    m = HomingMotor("Y-Motor", stepper, sensor, ymax, False, .001)
-    m.set_step_size(2)
-    return m
-
-
-def init_z() -> HomingMotor:
-    z_dir = 1
-    z_step = 12
-    z_ms1 = 21
-    z_ms2 = 20
-    z_ms3 = 16
-    stepper = Stepper(dir_pin=z_dir, step_pin=z_step, ms1_pin=z_ms1, ms2_pin=z_ms2, ms3_pin=z_ms3)
-    sensor = HomeSensor(25)
-    zmax = 3422
-    m = HomingMotor("Z-Motor", stepper, sensor, zmax, True)
-    return m
+import pb.plotbot as PB
 
 
 def go_percent(m: HomingMotor, percent: float):
@@ -89,23 +50,23 @@ def next_pixel(px, py, width: int, height: int):
     return nx, ny
 
 
-
-
 def main():
     GPIO.setmode(GPIO.BCM)
-    x, y, z = init_x(), init_y(), init_z()
-    pen_down = lambda: z.goto_pos(1220)
-    pen_up = lambda: z.goto_pos(1000)
+    config = PB.read_config()
 
-    time.sleep(1)
+    x, y, z = PB.init_motors(config)
+    pen_down = lambda: z.goto_pos(PB.named_point(config, 'z', 'down'))
+    pen_up = lambda: z.goto_pos(PB.named_point(config, 'z', 'up'))
+    y_home = PB.named_point(config, 'y', 'home')
+    x_home = PB.named_point(config, 'x', 'home')
+
     try:
-
+        z.go_home()
         x.go_home()
         y.go_home()
-        z.go_home()
 
         i = Image.open(sys.argv[1])
-        i.thumbnail((100,100))
+         i.thumbnail((100, 100))
         i = i.transpose(Image.FLIP_TOP_BOTTOM)
 
         avg = avg_pixel_sum(i)
@@ -118,8 +79,11 @@ def main():
                 # print('current px: ({},{}), next px:{})'.format(px, py, nxt_pixel))
 
                 if is_darker_than(cur_pixel, avg):
-                    go_percent(y, py / height)
-                    go_percent(x, px / width)
+                    x.goto_pos((px + x_home))
+                    y.goto_pos((py + y_home))
+                    #go_percent(y, py / height)
+                    #go_percent(x, px / width)
+
                     pen_down()
                     if px == width - 1 or py == height - 1:
                         pen_up()
