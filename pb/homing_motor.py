@@ -65,6 +65,13 @@ class HomingMotor:
             step_count += 1
         return step_count
 
+    def go_max(self) -> int:
+        step_count = 0
+        while not self.get_pos() >= self.__max_steps:
+            self.step_forward()
+            step_count += 1
+        return step_count
+
     def step_backward(self):
         """Returns 1 if moved or 0 if not moved because motor is already at min or max"""
         if self.is_home():

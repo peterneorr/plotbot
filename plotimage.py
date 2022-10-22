@@ -12,6 +12,7 @@ from pb.homing_motor import HomingMotor
 from pb.stepper import Stepper
 from PIL import Image
 import pb.plotbot as PB
+from plotbot import get_profile
 
 
 def go_percent(m: HomingMotor, percent: float):
@@ -51,22 +52,22 @@ def next_pixel(px, py, width: int, height: int):
 
 
 def main():
-    GPIO.setmode(GPIO.BCM)
-    config = PB.read_config()
 
-    x, y, z = PB.init_motors(config)
-    pen_down = lambda: z.goto_pos(PB.named_point(config, 'z', 'down'))
-    pen_up = lambda: z.goto_pos(PB.named_point(config, 'z', 'up'))
-    y_home = PB.named_point(config, 'y', 'home')
-    x_home = PB.named_point(config, 'x', 'home')
+    config, motors = PB.init()
+    profile = get_profile('ballpoint')
+    x, y, z = (motors['x'], motors['y'], motors['z'])
+    pen_down = lambda: z.goto_pos(PB.named_point(profile, 'z', 'down'))
+    pen_up = lambda: z.goto_pos(PB.named_point(profile, 'z', 'up'))
+    y_home = PB.named_point(profile, 'y', 'home')
+    x_home = PB.named_point(profile, 'x', 'home')
 
     try:
-        z.go_home()
-        x.go_home()
-        y.go_home()
+        PB.reset()
+        x.goto_pos(x_home)
+        y.goto_pos(y_home)
 
         i = Image.open(sys.argv[1])
-         i.thumbnail((100, 100))
+        i.thumbnail((300, 300))
         i = i.transpose(Image.FLIP_TOP_BOTTOM)
 
         avg = avg_pixel_sum(i)
@@ -91,6 +92,8 @@ def main():
                         pen_up()
 
         z.go_home()
+        # move tray forward
+        PB.tray_forward()
         GPIO.cleanup()
 
     except KeyboardInterrupt:

@@ -3,8 +3,6 @@ import argparse
 import copy
 import traceback
 
-import RPi.GPIO as GPIO
-
 from pb.homing_motor import HomingMotor
 import pb.plotbot as PB
 
@@ -49,17 +47,14 @@ def parse_args():
     return args
 
 
-def init():
-    GPIO.setmode(GPIO.BCM)
-    config = PB.read_config()
-    x, y, z = PB.init_motors(config)
-    motors = {'x': x, 'y': y, 'z': z}
-    return config, motors
+def get_profile(config, name: str):
+    """returns the a profile named in the config"""
+    return [p for p in config['profiles'] if p['id'] == name][0]
 
 
 def handle_move(args):
     """Move the print head a specific distance along a given axis"""
-    (config, motors) = init()
+    (config, motors) = PB.init()
     motor = motors[args.axis]
     count = args.count
     units = args.units
@@ -67,12 +62,7 @@ def handle_move(args):
         move_relative(motor, count, units)
     else:
         move_absolute(motor, count, units)
-    save_state(config, motors)
-
-
-def save_state(config, motors):
-    (x, y, z) = (motors['x'], motors['y'], motors['z'])
-    PB.save(config, x, y, z)
+    PB.save(config, motors)
 
 
 def move_relative(motor: HomingMotor, dist_arg: str, unit_arg: str):
@@ -124,24 +114,12 @@ def move_absolute(motor: HomingMotor, dist_arg: int, unit_arg: str):
 
 def handle_reset():
     """Move the print head to home position"""
-    (config, motors) = init()
-
-    # delete current position - it might be incorrect
-    config.pop('position', None)
-
-    # return all motors to home position
-    # Always do z first!  Lift the pen before you ramming things around!
-    for name in ('z', 'x', 'y'):
-        motor = motors[name]
-        count = motor.go_home()
-        print('{} moved {} pulses to get to MIN position: {}/{}'
-              .format(motor.get_name(), count, motor.get_pos(), motor.get_max_steps()))
-    save_state(config, motors)
+    PB.reset()
 
 
 def handle_goto(args):
     """Move the print head to a position specifically named in the current profile"""
-    (config, motors) = init()
+    (config, motors) = PB.init()
     axis = args.axis
     motor = motors[axis]
     name = args.name
@@ -169,12 +147,19 @@ def handle_goto(args):
         else:
             print("Error: named-point '{}' does not exist for {} axis in the active profile"
                   .format(name, axis))
-    save_state(config, motors)
+    PB.save(config, motors)
+
+
+def get_profile(name):
+    (config, motors) = PB.init()
+    profiles = config['profiles']
+    result = [p for p in profiles if p['id'] == name][0]
+    return result;
 
 
 def handle_set(args):
     """Add the current position as a named position to the current profile"""
-    (config, motors) = init()
+    (config, motors) = PB.init()
     axis = args.axis
     motor = motors[axis]
     name = args.name
@@ -189,7 +174,7 @@ def handle_set(args):
         named_points[motor.get_name()] = {}
     points_for_motor = named_points[motor.get_name()]
     points_for_motor[name] = motor.get_pos()
-    save_state(config, motors)
+    PB.save(config, motors)
     print("Set named-point '{}' for {} axis at position {}".format(name, motor.get_name(), motor.get_pos()))
 
 
@@ -223,7 +208,7 @@ def save_profile(config, name):
 
 def handle_profile(args):
     """Handle profile CRUD operations"""
-    (config, motors) = init()
+    (config, motors) = PB.init()
     profiles = config['profiles']
     if args.list:
         for p in profiles:
@@ -238,12 +223,12 @@ def handle_profile(args):
             print("Active profile set to '{}'".format(args.load))
     elif args.delete:
         delete_profile(config, args.delete)
-    save_state(config, motors)
+    PB.save(config, motors)
 
 
 def handle_status():
     """Display status information"""
-    config = PB.read_config()
+    config = PB.read_default_config()
     print('current-profile: {}'.format(current_profile))
     print('position: {}'.format(config['position']))
 
@@ -251,7 +236,7 @@ def handle_status():
 def main():
     try:
         args = parse_args()
-        config = PB.read_config()
+        config = PB.read_default_config()
         global current_profile
         current_profile = config['current-profile']
         if args.command == 'move':
@@ -273,7 +258,7 @@ def main():
 
     finally:
         # cleanup
-        GPIO.cleanup()
+        PB.cleanup()
 
 
 if __name__ == '__main__':
