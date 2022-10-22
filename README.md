@@ -7,7 +7,7 @@ Demo Video: https://www.youtube.com/watch?v=gwPj64Iiqy4
 # plotbot.py
 This is a command line interface program that allows for precise movement of the print head along a single axis.  Each 
 movement will report the current position of the print head and save this to a configuration file `~/.plotbot.json`
-See [plotbot.json](plotbot.json) in this repo for example
+See [example_plotbot.json](example_plotbot.json) in this repo for example
 
 This script is useful for calibrating and saving known positions 
 whenever the physical setup is changed. e.g. if a different print surface or writing implement is used. e.g. paper vs 
